@@ -1,6 +1,18 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+
+const server = express();
+
+server.use(express.json());
+
+server.use(helmet());
+server.use(cors());
+server.use(morgan());
+
 
 const Users = require('./db-functions');
 
@@ -9,35 +21,42 @@ const knexConfig = require('./knexfile.js');
 
 const db = knex(knexConfig.development);
 
-const server = express();
-
-server.use(express.json());
-
 const secret="temporary secret";
 
 
 server.get('/gigapets', async(req,res)=>{
     try{
-      const gigapets = await db('gigapets').select("gigapets.child","gigapets.username","gigapets.meal","gigapets.pet");//all records from table
+      const gigapets = await db('gigapetsMain')
       res.status(200).json(gigapets);
     }catch(error){
       res.status(500).json(error);
     }
   });
 
-  server.get('/:id', async(req,res)=>{
+  server.get('/users', async(req,res)=>{
     try{
-      const gigapet = await db('gigapets-main').where({id:req.params.id}).first().select("gigapets.child","gigapets.username","gigapets.meal","gigapets.pet");
+      const users = await db('user-info-gigapets')
+      res.status(200).json(users);
+    }catch(error){
+      res.status(500).json(error);
+    }
+  });
+
+
+
+  server.get('/gigapets/:id', async(req,res)=>{
+    try{
+      const gigapet = await db('gigapetsMain').where({id:req.params.id}).first();
       res.status(200).json(gigapet);
     }catch(error){
       res.status(500).json(error);
     }
   });
 
-  server.post('/',async(req,res)=>{
+  server.post('/gigapets',async(req,res)=>{
     try{
-      const [id]= await db('gigapets-main').insert(req.body);
-      const gigapet = await db('gigapets-main').where({ id }).first();
+      const [id]= await db('gigapetsMain').insert(req.body);
+      const gigapet = await db('gigapetsMain').where({ id }).first();
       res.status(201).json(gigapet);
     }catch(error){
       res.status(500).json(error);
@@ -117,23 +136,23 @@ server.get('/gigapets', async(req,res)=>{
     }
   }
 
-  server.get('/', (req,res)=>{
-    Users.findMain()
-      .then(users => {
-        res.json( users );
-      })
-      .catch(err => res.send(err));
-  });
+  // server.get('/gigapets', (req,res)=>{
+  //   Users.findMain().join('gigapetsMain', 'user-info-gigapets.id', 'gigapetsMain.user_id').select('*').from('gigapetsMain')
+  //     .then(users => {
+  //       res.json( users );
+  //     })
+  //     .catch(err => res.send(err));
+  // });
   
   
 
 
 
-  server.put('/:id',async(req,res)=>{
+  server.put('/gigapets/:id',async(req,res)=>{
     try{
-      const count = await db('gigapets-main').where({id:req.params.id}).update(req.body);
+      const count = await db('gigapetsMain').where({id:req.params.id}).update(req.body);
       if(count>0){
-        const gigapet = await db('gigapets-main').where({ id:req.params.id}).first();
+        const gigapet = await db('gigapetsMain').where({ id:req.params.id}).first();
       res.status(200).json(gigapet)
       }else{
         res.status(404).json('User Not Found')
@@ -141,9 +160,9 @@ server.get('/gigapets', async(req,res)=>{
     }catch(error){}
   });
   
-  server.delete('/:id',async(req,res)=>{
+  server.delete('/gigapets/:id',async(req,res)=>{
     try{
-      const count = await db('gigapets-main')
+      const count = await db('gigapetsMain')
       .where({id:req.params.id})
       .del();
       
